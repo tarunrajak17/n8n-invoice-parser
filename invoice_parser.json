@@ -1,0 +1,373 @@
+{
+  "name": "Invoice parser",
+  "nodes": [
+    {
+      "parameters": {
+        "formTitle": "Invoice Parser",
+        "formDescription": "Upload invoice to parse the information into CRM",
+        "formFields": {
+          "values": [
+            {
+              "fieldLabel": "Invoice",
+              "fieldType": "file"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.formTrigger",
+      "typeVersion": 2.6,
+      "position": [
+        0,
+        0
+      ],
+      "name": "On form submission"
+    },
+    {
+      "parameters": {
+        "operation": "pdf",
+        "binaryPropertyName": "=Invoice",
+        "options": {}
+      },
+      "type": "",
+      "typeVersion": 1.1,
+      "position": [
+        176,
+        0
+      ],
+      "name": "Extract from File"
+    },
+    {
+      "parameters": {
+        "text": "={{ $json.text }}",
+        "attributes": {
+          "attributes": [
+            {
+              "name": "Date",
+              "type": "date",
+              "description": "Extract the invoice date exactly as printed. Return only the invoice date.",
+              "required": true
+            },
+            {
+              "name": "From",
+              "description": "Extract the name of the person or business that issued the invoice.",
+              "required": true
+            },
+            {
+              "name": "Items",
+              "description": "Extract every individual line item from the invoice.  For each line, extract: - Item: the exact item or service description - Quantity: the quantity printed on THAT SAME LINE - Price: the UNIT PRICE printed on THAT SAME LINE  IMPORTANT: Read the invoice table row by row.  Never use the invoice subtotal, invoice total, grand total, balance due, or any other amount outside the item's row as the item's Price.  The Price must be the unit price belonging to that exact item.  Extract ALL rows. Do not stop after the first row.  For this invoice, if the same unit price is shown for multiple rows, repeat that unit price for each corresponding row.  Return each row using exactly this format:  Item: [item description] Quantity: [quantity] Price: [unit price]  Do not add Total Amount or Balance Due to this field.",
+              "required": true
+            },
+            {
+              "name": "Quantity",
+              "type": "number",
+              "description": "Extract the quantity corresponding to the specific invoice item. Return only the numeric quantity. Match the quantity to the correct item.",
+              "required": true
+            },
+            {
+              "name": "Price",
+              "description": "Extract the unit price of the specific invoice item. Return only the numeric price, without currency symbols or commas. Do not return the invoice subtotal or total amount.",
+              "required": true
+            },
+            {
+              "name": "Total Amount",
+              "type": "number",
+              "description": "Read the FINAL TOTAL printed on the invoice.  This is the invoice-level total after all line items.  Do NOT use the first item's price. Do NOT use any individual item's price. Do NOT calculate this value. Do NOT use the Balance Due.  Look specifically for the final invoice total / grand total.  Return only the numeric value.",
+              "required": true
+            },
+            {
+              "name": "Balance Due",
+              "type": "number",
+              "description": "Read the ACTUAL BALANCE DUE printed on the invoice.  This is an invoice-level value.  Do NOT use an item's price. Do NOT use the first item's price. Do NOT use the Total Amount unless the invoice explicitly shows the same value as Balance Due.  Look specifically for \"Balance Due\", \"Amount Due\", \"Outstanding\", or equivalent.  Return only the numeric value.",
+              "required": true
+            },
+            {
+              "name": "Billed to",
+              "description": "Extract the name of the customer or business being billed.",
+              "required": true
+            }
+          ]
+        },
+        "options": {
+          "systemPromptTemplate": "Extract each invoice item's price exactly as printed in the invoice table.\n\nIMPORTANT:\n- Read the Price column for each item separately.\n- Do not copy a price from another item.\n- Do not confuse digits from nearby text or other invoice fields.\n- Return each item's price in the Items list separately.\n- If a price is unclear, flag it for verification instead of guessing."
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.informationExtractor",
+      "typeVersion": 1.2,
+      "position": [
+        368,
+        0
+      ],
+      "name": "Information Extractor"
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatAlibabaCloud",
+      "typeVersion": 1.1,
+      "position": [
+        384,
+        208
+      ],
+      "name": "Qwen Cloud Chat Model"
+    },
+    {
+      "parameters": {
+        "operation": "append",
+        "documentId": {
+          "__rl": true,
+          "value": "",
+          "mode": "list",
+          "cachedResultName": "invoice parse",
+          "cachedResultUrl": ""
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "gid=0",
+          "mode": "list",
+          "cachedResultName": "Sheet1",
+          "cachedResultUrl": ""
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "Date": "={{ $json.Date }}",
+            "From": "={{ $json.From }}",
+            "Quantity": "={{ $json.Quantity }}",
+            "Billed to": "={{ $json['Billed to'] }}",
+            "Item": "={{ $json.Item }}",
+            "Price": "={{ $json.Price }}",
+            "Total Amount": "={{ $json['Total Amount'] }}",
+            "Balance Due": "={{ $json['Balance Due'] }}"
+          },
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "Date",
+              "displayName": "Date",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "From",
+              "displayName": "From",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "Billed to",
+              "displayName": "Billed to",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "Item",
+              "displayName": "Item",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "Quantity",
+              "displayName": "Quantity",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "Price",
+              "displayName": "Price",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "Total Amount",
+              "displayName": "Total Amount",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "Balance Due",
+              "displayName": "Balance Due",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        928,
+        0
+      ],
+      "name": "Append row in sheet"
+    },
+    {
+      "parameters": {
+        "jsCode": "const results = [];\n\nfor (const input of $input.all()) {\n  const d = input.json.output ?? input.json;\n  const raw = String(d.Items ?? d.items ?? \"\");\n\n  const regex =\n    /Item:\\s*(.*?)\\s+Quantity:\\s*(\\d+(?:\\.\\d+)?)\\s+Price:\\s*₹?\\s*([\\d,]+(?:\\.\\d+)?)/gi;\n\n  const products = [];\n  let match;\n\n  while ((match = regex.exec(raw)) !== null) {\n    products.push({\n      item: match[1].trim(),\n      quantity: Number(match[2]),\n      price: Number(match[3].replace(/,/g, \"\")),\n    });\n  }\n\n  for (let index = 0; index < products.length; index++) {\n    const p = products[index];\n\n    results.push({\n      json: {\n        \"Date\": d.Date ?? d.date ?? \"\",\n        \"From\": d.From ?? d.from ?? \"\",\n        \"Billed to\": d[\"Billed to\"] ?? d.Billed_to ?? \"\",\n        \"Item\": p.item,\n        \"Quantity\": p.quantity,\n        \"Price\": p.price,\n        \"Total Amount\": index === 0 ? (d[\"Total Amount\"] ?? d.totalAmount ?? \"\") : \"\",\n        \"Balance Due\": index === 0 ? (d[\"Balance Due\"] ?? d.balanceDue ?? \"\") : \"\",\n      },\n    });\n  }\n}\n\nreturn results;"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        672,
+        0
+      ],
+      "name": "Code in JavaScript"
+    },
+    {
+      "parameters": {
+        "sendTo": "",
+        "subject": "={{ $json.subject }}",
+        "message": "={{ $json.message }}",
+        "options": {
+          "appendAttribution": false
+        }
+      },
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.2,
+      "position": [
+        1376,
+        0
+      ],
+      "name": "Send a message"
+    },
+    {
+      "parameters": {
+        "jsCode": "\nconst rows = $(\"Code in JavaScript\").all().map(i => i.json);\n\nif (rows.length === 0) {\n  throw new Error(\"No invoice rows found from Code in JavaScript.\");\n}\n\nconst first = rows[0];\n\nconst esc = (v) => String(v ?? \"\").replace(/[&<>\"']/g, c => ({\n  \"&\": \"&amp;\",\n  \"<\": \"&lt;\",\n  \">\": \"&gt;\",\n  '\"': \"&quot;\",\n  \"'\": \"&#39;\"\n}[c]));\n\nconst company = first[\"Billed to\"] || \"Unknown Company\";\nconst date = first[\"Date\"] || \"\";\nconst sender = first[\"From\"] || \"\";\nconst total = first[\"Total Amount\"] ?? \"\";\nconst balance = first[\"Balance Due\"] ?? \"\";\n\nconst itemRows = rows.map((r, i) => `\n<tr>\n  <td>${i + 1}</td>\n  <td>${esc(r[\"Item\"])}</td>\n  <td>${esc(r[\"Quantity\"])}</td>\n  <td>₹${esc(r[\"Price\"])}</td>\n</tr>`).join(\"\");\n\nconst message = `\n<p>Hello Sir,</p>\n<p>A new invoice has been processed successfully.</p>\n<p>\n<strong>Company:</strong> ${esc(company)}<br>\n<strong>Date:</strong> ${esc(date)}<br>\n<strong>From:</strong> ${esc(sender)}<br>\n<strong>Total Amount:</strong> ₹${esc(total)}<br>\n<strong>Balance Due:</strong> ₹${esc(balance)}\n</p>\n<h3>Invoice Items</h3>\n<table border=\"1\" cellpadding=\"6\" cellspacing=\"0\">\n<tr><th>No.</th><th>Item</th><th>Quantity</th><th>Price</th></tr>\n${itemRows}\n</table>\n<p>All invoice items have been saved to Google Sheets.</p>\n<p>Regards,<br>Invoice Automation System</p>`;\n\nreturn [{\n  json: {\n    subject: `New Invoice Processed - ${company}`,\n    message: message\n  }\n}];\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1152,
+        0
+      ],
+      "name": "Code in JavaScript1"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "On form submission": {
+      "main": [
+        [
+          {
+            "node": "Extract from File",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Extract from File": {
+      "main": [
+        [
+          {
+            "node": "Information Extractor",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Qwen Cloud Chat Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "Information Extractor",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Information Extractor": {
+      "main": [
+        [
+          {
+            "node": "Code in JavaScript",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code in JavaScript": {
+      "main": [
+        [
+          {
+            "node": "Append row in sheet",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Append row in sheet": {
+      "main": [
+        [
+          {
+            "node": "Code in JavaScript1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code in JavaScript1": {
+      "main": [
+        [
+          {
+            "node": "Send a message",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate"
+  },
+  "meta": {
+    "templateCredsSetupCompleted": true
+  },
+  "nodeGroups": [],
+  "id": "",
+  "tags": []
+}
